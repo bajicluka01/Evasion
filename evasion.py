@@ -8,18 +8,10 @@ class Room:
         self.b = b
 
 class Sensor:
-    def __init__(self, rail, color):
+    def __init__(self, center, rail, direction, color):
+        self.x = center[0]
+        self.y = center[1]
         self.rail = rail
-        self.color = color
-
-    def print(self):
-        print(self.rail.print())
-
-class Rail:
-    def __init__(self, x, y, length, direction, color):
-        self.x = x
-        self.y = y
-        self.length = length
         self.color = color
 
         if direction not in ['left', 'right', 'up', 'down']:
@@ -27,15 +19,63 @@ class Rail:
         self.direction = direction
 
     def print(self):
-        print(self.x, self.y, self.length, self.direction)
+        print(self.rail.print())
+
+class Rail:
+    def __init__(self, start, end, length, color):
+        self.start = start
+        self.end = end
+        self.length = length
+        self.color = color
+
+    def print(self):
+        print(self.start, self.end, self.length)
 
 class Configuration:
     def __init__(self, rails, sensors):
         self.rails = rails
         self.sensors = sensors
 
+    def copy(self):
+        return Configuration(self.rails, self.sensors)
+
+    def sensor_values(self):
+        vals = []
+        for sensor in self.sensors:
+            vals.append((sensor.x, sensor.y))
+        return vals
+
     def move_all(self):
-        print("Executed move")
+        newsensors = []
+        for rail, sensor in zip(self.rails, self.sensors):
+            if sensor.direction == "left":
+                if sensor.x == rail.start[0]:
+                    sensor.x = rail.start[0]
+                    sensor.direction = "right"
+                else:
+                    sensor.x-=1
+            if sensor.direction == "right":
+                if sensor.x == rail.end[0]:
+                    sensor.x = rail.end[0]-1 #doesn't work if stationary rails
+                    sensor.direction="left"
+                else:
+                    sensor.x+=1
+            if sensor.direction == "up":
+                if sensor.y == rail.start[1]:
+                    sensor.y = rail.start[1]
+                    sensor.direction="down"
+                else:
+                    sensor.y-=1
+            if sensor.direction == "down":
+                if sensor.y == rail.end[1]:
+                    sensor.y = rail.end[1]-1 #doesn't work if stationary rails
+                    sensor.direction="up"
+                else:
+                    sensor.y+=1
+            
+            newsensors.append(sensor)
+        self.sensors = newsensors
+
 
     def print_current(self):
         for rail in self.rails:
@@ -52,6 +92,15 @@ class Configuration:
         tmpa = 8
         tmpb = 8
         width = 50
+
+        #sensors
+        for sensor in self.sensors:
+            rectx1 = startx+ (width*(sensor.x-1))
+            recty1 = starty+ (width*(sensor.y-1))
+            rectx2 = startx+ (width*(sensor.x+1))
+            recty2 = starty+ (width*(sensor.y+1))
+            cv.rectangle(img, (rectx1, recty1), (rectx2, recty2), sensor.color, -1)
+
         #grid
         for i in range(0,tmpa):
             cv.line(img, (startx+i*width,starty), (startx+((i+1)*width),starty), (0,0,0), 1)
@@ -61,39 +110,46 @@ class Configuration:
         cv.line(img, (startx,starty+tmpb*width), (startx+tmpa*width,starty+tmpb*width), (0,0,0), 1)
         cv.line(img, (startx+tmpa*width,starty), (startx+(tmpa*width),starty+(tmpb*width)), (0,0,0), 1)
 
-        #sensors
+        #rails
         for rail in self.rails:
-            rectx1 = startx+ (width*(rail.x-1))
-            recty1 = starty+ (width*(rail.y-1))
-            rectx2 = startx+ (width*(rail.x+1))
-            recty2 = starty+ (width*(rail.y+1))
-            cv.rectangle(img, (rectx1, recty1), (rectx2, recty2), rail.color, -1)
+            linestartx = startx+ (width * rail.start[0])
+            linestarty = starty+ (width * rail.start[1])
+            lineendx = startx+ (width * rail.end[0])
+            lineendy = starty+ (width * rail.end[1])
+            cv.line(img, (linestartx, linestarty), (lineendx, lineendy), rail.color, 4)
 
         return img
 
+    def equals(self, first, second):
+        if len(first) != len(second):
+            return False
+
+        for a, b in zip(first, second):
+            if a!=b:
+                return False
+        return True
+
     def determine_period(self):
         max_iter = 100000
-        initial_state = self.sensors
-        period = 0
+        configuration = self.copy()
+        initial_state = configuration.sensor_values()
+        period = 1
         for i in range(0,max_iter):
-            self.move_all()
-            current_state = self.sensors
-            if initial_state.equals(current_state):
+            configuration.move_all()
+            current_state = configuration.sensor_values()
+            if self.equals(initial_state, current_state):
                 return period
             period+=1
-        return -1
-
-
+        raise Exception("Couldn't determine period: exceeded ", max_iter, " iterations.")
 
     def display(self):
         img = self.get_current_image()
-
-        cv.namedWindow("resized_window", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO) 
-        cv.resizeWindow("resized_window", 800, 600)
+        cv.namedWindow("resized_window", cv.WINDOW_NORMAL) 
+        cv.resizeWindow("resized_window", 800, 800)
         cv.imshow("resized_window", img)
 
         while 1==1:
-            k = cv.waitKey(0) # Wait for a keystroke in the window
+            k = cv.waitKey(0)
             
             #a to exit
             if k == 97:
@@ -101,14 +157,11 @@ class Configuration:
             #anything else to execute a move and draw new state
             else:
                 self.move_all()
-                self.get_current_image()
-                cv.destroyAllWindows()
-                cv.namedWindow("resized_window", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO) 
-                cv.resizeWindow("resized_window", 800, 600)
+                img = self.get_current_image()
+                #cv.destroyAllWindows()
+                #cv.namedWindow("resized_window", cv.WINDOW_NORMAL) 
+                #cv.resizeWindow("resized_window", 800, 800)
                 cv.imshow("resized_window", img)
-
-
-
 
 class Complex:
     def __init__(self):
@@ -116,7 +169,6 @@ class Complex:
 
     def complement(self):
         return 0
-
 
 #time
 t = 0
@@ -130,13 +182,16 @@ p = -1
 rails = []
 sensors = []
 locations = [(1,1), (6,1), (5,4), (3,5), (7,5), (4,7)]
-colors = [(0,0,255), (200,0,200), (0,200,0), (255,0,0), (0,255,0), (0,100,200)] #BGR
-directions = ["down", "right", "up", "down", "down", "left"]
+railcolors = [(0,0,255), (200,0,200), (0,200,0), (255,0,0), (0,255,0), (0,100,200)] #BGR
+sensorcolors = [(0,0,230), (200,0,170), (0,170,0), (230,0,0), (0,230,0), (0,100,170)] #BGR
+directions = ["down", "right", "down", "up", "down", "left"]
 lengths = [5, 5, 2, 2, 3, 4]
+railstarts = [(1,1), (2,1), (5,3), (3,3), (7,3), (1,7)]
+railends =   [(1,6), (7,1), (5,5), (3,5), (7,7), (5,7)]
 for i in range(nrs):
-    rails.append(Rail(locations[i][0],locations[i][1],lengths[i],"left", colors[i]))
-    sensors.append(Sensor(rails[i], colors[i]))
+    rails.append(Rail(railstarts[i], railends[i], lengths[i], railcolors[i]))
+    sensors.append(Sensor(locations[i], rails[i], directions[i], sensorcolors[i]))
 
 initial = Configuration(rails, sensors)
 initial.display()
-
+print(initial.determine_period())
