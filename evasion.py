@@ -31,12 +31,14 @@ class Rail:
         print(self.start, self.end, self.length)
 
 class Configuration:
-    def __init__(self, rails, sensors):
+    def __init__(self, rails, sensors, room):
         self.rails = rails
         self.sensors = sensors
+        self.room = room
 
     def copy(self):
-        return Configuration(self.rails, self.sensors)
+        print(self.sensors[0].print())
+        return Configuration(self.rails, self.sensors, self.room)
 
     def sensor_values(self):
         vals = []
@@ -47,6 +49,11 @@ class Configuration:
     def move_all(self):
         newsensors = []
         for rail, sensor in zip(self.rails, self.sensors):
+            #take care of stationary rails
+            if rail.length == 0:
+                newsensors.append(sensor)
+                continue
+
             if sensor.direction == "left":
                 if sensor.x == rail.start[0]:
                     sensor.x = rail.start[0]
@@ -55,7 +62,7 @@ class Configuration:
                     sensor.x-=1
             if sensor.direction == "right":
                 if sensor.x == rail.end[0]:
-                    sensor.x = rail.end[0]-1 #doesn't work if stationary rails
+                    sensor.x = rail.end[0]-1
                     sensor.direction="left"
                 else:
                     sensor.x+=1
@@ -67,16 +74,17 @@ class Configuration:
                     sensor.y-=1
             if sensor.direction == "down":
                 if sensor.y == rail.end[1]:
-                    sensor.y = rail.end[1]-1 #doesn't work if stationary rails
+                    sensor.y = rail.end[1]-1
                     sensor.direction="up"
                 else:
                     sensor.y+=1
             
             newsensors.append(sensor)
         self.sensors = newsensors
+        return self
 
 
-    def print_current(self):
+    def printCurrent(self):
         for rail in self.rails:
             print(rail.print())
 
@@ -88,8 +96,6 @@ class Configuration:
         img.fill(255)
         startx = 5
         starty = 5
-        tmpa = 8
-        tmpb = 8
         width = 50
 
         #sensors
@@ -101,13 +107,13 @@ class Configuration:
             cv.rectangle(img, (rectx1, recty1), (rectx2, recty2), sensor.color, -1)
 
         #grid
-        for i in range(0,tmpa):
+        for i in range(0,self.room.a):
             cv.line(img, (startx+i*width,starty), (startx+((i+1)*width),starty), (0,0,0), 1)
-            for j in range(0,tmpb):
+            for j in range(0,self.room.b):
                 cv.line(img, (startx+i*width,starty+j*width), (startx+i*width,starty+((j+1)*width)), (0,0,0), 1)
                 cv.line(img, (startx+i*width,starty+j*width), (startx+((i+1)*width),starty+(j*width)), (0,0,0), 1)
-        cv.line(img, (startx,starty+tmpb*width), (startx+tmpa*width,starty+tmpb*width), (0,0,0), 1)
-        cv.line(img, (startx+tmpa*width,starty), (startx+(tmpa*width),starty+(tmpb*width)), (0,0,0), 1)
+        cv.line(img, (startx,starty+self.room.b*width), (startx+self.room.a*width,starty+self.room.b*width), (0,0,0), 1)
+        cv.line(img, (startx+self.room.a*width,starty), (startx+(self.room.a*width),starty+(self.room.b*width)), (0,0,0), 1)
 
         #rails
         for rail in self.rails:
@@ -156,15 +162,47 @@ class Configuration:
             #anything else to execute a move and draw new state
             else:
                 self.move_all()
+                #print(self.observedSquares())
+                #print(len(obs), len(nobs))
                 img = self.get_current_image()
-                #cv.destroyAllWindows()
-                #cv.namedWindow("resized_window", cv.WINDOW_NORMAL) 
-                #cv.resizeWindow("resized_window", 800, 800)
                 cv.imshow("resized_window", img)
 
+    #determines whether a square (x,y) is covered by any sensor at the given moment
+    def sensorOnSquare(self, x, y):
+        vals = self.sensor_values()
+        for sensor in vals:
+            if (x <= sensor[0] <= (x+1)) and (y <= sensor[1] <= (y+1)):
+                return True
+        return False
+
+    #returns lists of observed and unobserved squares at the given moment
+    def observedSquares(self):
+        observed = []
+        unobserved = []
+
+        for i in range(0,self.room.a):
+            for j in range(0, self.room.b):
+                if self.sensorOnSquare(i, j):
+                    observed.append((i,j))
+                else:
+                    unobserved.append((i,j))
+
+        return observed, unobserved
+
 class Complex:
-    def __init__(self):
-        self.c = 0
+    def __init__(self, configs):
+        self.covered = []
+        self.uncovered = []
+        for config in configs:
+            cov, uncov = config.observedSquares()
+            self.covered.append(cov)
+            self.uncovered.append(uncov)
+
+        self.connectSlices()
+
+    def connectSlices(self):
+        #print(self.covered)
+        return 0
 
     def complement(self):
         return 0
@@ -191,6 +229,20 @@ for i in range(nrs):
     rails.append(Rail(railstarts[i], railends[i], lengths[i], railcolors[i]))
     sensors.append(Sensor(locations[i], rails[i], directions[i], sensorcolors[i]))
 
-initial = Configuration(rails, sensors)
-initial.display()
-print(initial.determine_period())
+room = Room(8,8)
+
+initial = Configuration(rails, sensors, room)
+obs, nobs = initial.observedSquares()
+
+#initial.display()
+#print(initial.determine_period())
+
+configs = []
+for i in range(0, initial.determine_period()):
+    initial.move_all()
+    configs.append(initial.copy())
+complex = Complex(configs)
+
+#print(configs[0].printCurrent(), configs[-1].printCurrent())
+#configs[0].display()
+configs[7].display()
