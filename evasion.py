@@ -1,5 +1,7 @@
 import cv2 as cv
 import numpy as np
+import cubix as cb
+from gudhi import CubicalComplex
 
 class Room:
     def __init__(self, a, b):
@@ -37,7 +39,7 @@ class Configuration:
         self.room = room
 
     def copy(self):
-        print(self.sensors[0].print())
+        #print(self.sensors[0].print())
         return Configuration(self.rails, self.sensors, self.room)
 
     def sensor_values(self):
@@ -236,6 +238,19 @@ obs, nobs = initial.observedSquares()
 
 #initial.display()
 #print(initial.determine_period())
+
+cc = CubicalComplex(top_dimensional_cells=np.array([[ 1.,  8.,  7.],
+                                                    [ 4., 20.,  6.],
+                                                    [ 6.,  4.,  5.]]))
+print(f"Cubical complex is of dimension {cc.dimension()} - {cc.num_simplices()} simplices.")
+
+X = cb.S2(center=(2,1,4), r=5, err=0.1, N=2000)
+X.plot()
+X.kde_plot()
+h = X.persistent_homology()
+h.persistence_diagram()
+h.bar_code()
+h.detail()
 
 configs = []
 for i in range(0, initial.determine_period()):
