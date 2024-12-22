@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import cubix as cb
 from gudhi import CubicalComplex
+from random import random
 
 class Room:
     def __init__(self, a, b):
@@ -209,13 +210,62 @@ class Complex:
     def complement(self):
         return 0
 
-#time
-t = 0
+def generateRandomConfiguration(a, b):
+    room = Room(a,b)
+    rails = []
+    sensors = []
+    locations = []
+    sensorcolors = []
+    directions = []
+    nrs = int(random()*10+5)
+    for i in range(nrs):
+        red = random()*200
+        green = random()*200
+        blue = random()*200
+
+        #vertical
+        if random() >= 0.5:
+            railx = int(random()*(b-1)+1)
+            raillength = int(random()*(a-1)+1)
+            railstarty = int(random()*(a-1)+1)
+            railendy = railstarty%raillength+1
+            if railendy < railstarty:
+                rails.append(Rail((railx, railendy), (railx, railstarty), abs(railstarty-railendy), (blue+20,green+20,red+20)))
+            else:
+                rails.append(Rail((railx, railstarty), (railx, railendy), abs(railstarty-railendy), (blue+20,green+20,red+20)))
+            
+            if random() >= 0.5:
+                direction = "up"
+            else:
+                direction = "down"
+            sensors.append(Sensor((railx, railstarty), rails[i], direction, (blue,green,red)))
+        #horizontal
+        else:
+            railstartx = int(random()*(a-1)+1)
+            raillength = int(random()*(b-1)+1)
+            raily = int(random()*(b-1)+1)
+            railendx = railstartx%raillength+1
+            if railendx < railstartx:
+                rails.append(Rail((railendx, raily), (railstartx, raily), abs(railstartx-railendx), (blue+20,green+20,red+20)))
+            else:
+                rails.append(Rail((railstartx, raily), (railendx, raily), abs(railstartx-railendx), (blue+20,green+20,red+20)))
+
+            if random() >= 0.5:
+                direction = "left"
+            else:
+                direction = "right"
+            sensors.append(Sensor((railstartx, raily), rails[i], direction, (blue,green,red)))
+
+    return Configuration(rails, sensors, room)
+
 #number of rails and sensors
 nrs = 6
 
 #period
 p = -1
+
+config = generateRandomConfiguration(8,8)
+config.display()
 
 #generate rails and sensors
 rails = []
@@ -239,18 +289,18 @@ obs, nobs = initial.observedSquares()
 #initial.display()
 #print(initial.determine_period())
 
-cc = CubicalComplex(top_dimensional_cells=np.array([[ 1.,  8.,  7.],
-                                                    [ 4., 20.,  6.],
-                                                    [ 6.,  4.,  5.]]))
-print(f"Cubical complex is of dimension {cc.dimension()} - {cc.num_simplices()} simplices.")
+#cc = CubicalComplex(top_dimensional_cells=np.array([[ 1.,  8.,  7.],
+#                                                    [ 4., 20.,  6.],
+#                                                    [ 6.,  4.,  5.]]))
+#print(f"Cubical complex is of dimension {cc.dimension()} - {cc.num_simplices()} simplices.")
 
-X = cb.S2(center=(2,1,4), r=5, err=0.1, N=2000)
-X.plot()
-X.kde_plot()
-h = X.persistent_homology()
-h.persistence_diagram()
-h.bar_code()
-h.detail()
+#X = cb.S2(center=(2,1,4), r=5, err=0.1, N=2000)
+#X.plot()
+#X.kde_plot()
+#h = X.persistent_homology()
+#h.persistence_diagram()
+#h.bar_code()
+#h.detail()
 
 configs = []
 for i in range(0, initial.determine_period()):
@@ -260,4 +310,4 @@ complex = Complex(configs)
 
 #print(configs[0].printCurrent(), configs[-1].printCurrent())
 #configs[0].display()
-configs[7].display()
+#configs[7].display()
