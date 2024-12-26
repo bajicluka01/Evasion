@@ -95,11 +95,12 @@ class Configuration:
             print(sensor.print())
 
     def get_current_image(self):
-        img = np.zeros([500,500,3],dtype=np.uint8)
+        totalwidth = 800
+        img = np.zeros([totalwidth,totalwidth,3],dtype=np.uint8)
         img.fill(255)
         startx = 5
         starty = 5
-        width = 50
+        width = int((totalwidth-5)/max(self.room.a,self.room.b))
 
         #sensors
         for sensor in self.sensors:
@@ -211,6 +212,8 @@ class Complex:
         return 0
 
 def generateRandomConfiguration(a, b):
+    a = int(random()*10+8)
+    b = int(random()*10+8)
     room = Room(a,b)
     rails = []
     sensors = []
@@ -225,9 +228,9 @@ def generateRandomConfiguration(a, b):
 
         #vertical
         if random() >= 0.5:
-            railx = int(random()*(b-1)+1)
-            raillength = int(random()*(a-1)+1)
-            railstarty = int(random()*(a-1)+1)
+            railx = int(random()*(a-2)+1)
+            raillength = int(random()*(a-2)+1)
+            railstarty = int(random()*(b-2)+1)
             railendy = railstarty%raillength+1
             if railendy < railstarty:
                 rails.append(Rail((railx, railendy), (railx, railstarty), abs(railstarty-railendy), (blue+20,green+20,red+20)))
@@ -241,9 +244,9 @@ def generateRandomConfiguration(a, b):
             sensors.append(Sensor((railx, railstarty), rails[i], direction, (blue,green,red)))
         #horizontal
         else:
-            railstartx = int(random()*(a-1)+1)
-            raillength = int(random()*(b-1)+1)
-            raily = int(random()*(b-1)+1)
+            railstartx = int(random()*(a-2)+1)
+            raillength = int(random()*(b-2)+1)
+            raily = int(random()*(b-2)+1)
             railendx = railstartx%raillength+1
             if railendx < railstartx:
                 rails.append(Rail((railendx, raily), (railstartx, raily), abs(railstartx-railendx), (blue+20,green+20,red+20)))
