@@ -2,8 +2,10 @@ import cv2 as cv
 import numpy as np
 import cubix as cb
 from gudhi import CubicalComplex
+from gudhi import PeriodicCubicalComplex as PCC
 from random import random
 
+#a simple rectangle/square for now, not sure if we're gonna get any fancier than this
 class Room:
     def __init__(self, a, b):
         self.a = a
@@ -40,15 +42,16 @@ class Configuration:
         self.room = room
 
     def copy(self):
-        #print(self.sensors[0].print())
         return Configuration(self.rails, self.sensors, self.room)
 
+    #returns a list of current positions of all sensors
     def sensor_values(self):
         vals = []
         for sensor in self.sensors:
             vals.append((sensor.x, sensor.y))
         return vals
 
+    #moves all sensors in their appropriate direction (i.e. increase the time slice by one)
     def move_all(self):
         newsensors = []
         for rail, sensor in zip(self.rails, self.sensors):
@@ -86,7 +89,6 @@ class Configuration:
         self.sensors = newsensors
         return self
 
-
     def printCurrent(self):
         for rail in self.rails:
             print(rail.print())
@@ -94,6 +96,7 @@ class Configuration:
         for sensor in self.sensors:
             print(sensor.print())
 
+    #returns an image with all the current states drawn
     def get_current_image(self):
         totalwidth = 800
         img = np.zeros([totalwidth,totalwidth,3],dtype=np.uint8)
@@ -129,6 +132,7 @@ class Configuration:
 
         return img
 
+    #determines if two states are the same
     def equals(self, first, second):
         if len(first) != len(second):
             return False
@@ -138,6 +142,8 @@ class Configuration:
                 return False
         return True
 
+    #executes moves as long as it doesn't reach the initial state (or gives up if it takes more than max_iter iterations)
+    #in main example (PDF) period is 40
     def determine_period(self):
         max_iter = 100000
         configuration = self.copy()
@@ -166,8 +172,6 @@ class Configuration:
             #anything else to execute a move and draw new state
             else:
                 self.move_all()
-                #print(self.observedSquares())
-                #print(len(obs), len(nobs))
                 img = self.get_current_image()
                 cv.imshow("resized_window", img)
 
@@ -193,6 +197,7 @@ class Configuration:
 
         return observed, unobserved
 
+#not sure if it's gonna be necessary to have Complex at all
 class Complex:
     def __init__(self, configs):
         self.covered = []
@@ -205,21 +210,18 @@ class Complex:
         self.connectSlices()
 
     def connectSlices(self):
-        #print(self.covered)
         return 0
 
     def complement(self):
         return 0
 
+#generates random configuration (i.e. random rectangular room, random sensors, random rails)
 def generateRandomConfiguration(a, b):
     a = int(random()*10+8)
     b = int(random()*10+8)
     room = Room(a,b)
     rails = []
     sensors = []
-    locations = []
-    sensorcolors = []
-    directions = []
     nrs = int(random()*10+5)
     for i in range(nrs):
         red = random()*200
@@ -264,11 +266,8 @@ def generateRandomConfiguration(a, b):
 #number of rails and sensors
 nrs = 6
 
-#period
-p = -1
-
-config = generateRandomConfiguration(8,8)
-config.display()
+#config = generateRandomConfiguration(8,8)
+#config.display()
 
 #generate rails and sensors
 rails = []
@@ -286,16 +285,60 @@ for i in range(nrs):
 
 room = Room(8,8)
 
+#main example (the one on the pdf)
 initial = Configuration(rails, sensors, room)
 obs, nobs = initial.observedSquares()
+period = initial.determine_period()
 
+#uncomment this if you want the main example displayed
 #initial.display()
 #print(initial.determine_period())
 
-#cc = CubicalComplex(top_dimensional_cells=np.array([[ 1.,  8.,  7.],
-#                                                    [ 4., 20.,  6.],
-#                                                    [ 6.,  4.,  5.]]))
-#print(f"Cubical complex is of dimension {cc.dimension()} - {cc.num_simplices()} simplices.")
+
+all_states_for_one_period = []
+for p in range(period):
+    tmparr = []
+    obs, nobs = initial.observedSquares()
+    for i in range(0,8):
+        tmparr2 = []
+        for j in range(0,8):
+            if (j, i) in obs:
+                tmparr2.append(0)
+            else:
+                tmparr2.append(1)
+        tmparr.append(tmparr2)
+    all_states_for_one_period.append(tmparr)
+    initial.move_all()
+
+print(all_states_for_one_period[0])
+
+#random small example for testing purposes
+arr = np.array([[ 1.,  8.,  7.], [ 4., 20.,  6.], [ 6.,  4.,  5.]])
+arr = np.array([[1,1,1], [1,0,1], [1,1,1], [1,0,1], [1,1,1]])
+
+p1 = np.array([[1,1,1], [1,1,1], [1,1,1]])
+p2 = np.array([[1,1,1], [1,1,1], [1,1,1]])
+p3 = np.array([[1,1,1], [1,1,1], [1,1,1]])
+
+arr = np.array([p1, p2, p3])
+
+#main example
+arr = all_states_for_one_period
+print(np.array(arr).shape)
+
+#print("arr", arr)
+#pcc = PCC(top_dimensional_cells = arr, periodic_dimensions=[True, False])
+pcc = PCC(vertices = arr, periodic_dimensions=[True]*40)
+print(f"Periodic cubical complex is of dimension {pcc.dimension()} - {pcc.num_simplices()} simplices.")
+pcc.compute_persistence(2)
+print("betti", pcc.betti_numbers())
+#print(pcc.all_cells())
+#print(pcc.cofaces_of_persistence_pairs())
+print(pcc.persistence_intervals_in_dimension(1))
+print(pcc.persistence_intervals_in_dimension(2))
+
+print(len(pcc.persistence(2)))
+#print(pcc.top_dimensional_cells())
 
 #X = cb.S2(center=(2,1,4), r=5, err=0.1, N=2000)
 #X.plot()
