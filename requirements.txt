@@ -1,4 +1,0 @@
-numpy==2.2.0
-opencv-python==4.10.0.84
-gudhi==3.10.1
-cubix==1.1.1
