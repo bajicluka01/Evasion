@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 import cubix as cb
-from gudhi import CubicalComplex
+from gudhi import CubicalComplex as CC
 from gudhi import PeriodicCubicalComplex as PCC
 from random import random
 
@@ -291,7 +291,7 @@ obs, nobs = initial.observedSquares()
 period = initial.determine_period()
 
 #uncomment this if you want the main example displayed
-#initial.display()
+initial.display()
 #print(initial.determine_period())
 
 
@@ -311,6 +311,8 @@ for p in range(period):
     initial.move_all()
 
 print(all_states_for_one_period[0])
+print(all_states_for_one_period[1])
+
 
 #random small example for testing purposes
 arr = np.array([[ 1.,  8.,  7.], [ 4., 20.,  6.], [ 6.,  4.,  5.]])
@@ -322,9 +324,11 @@ p3 = np.array([[1,1,1], [1,1,1], [1,1,1]])
 
 arr = np.array([p1, p2, p3])
 
+
+#TODO: Nik
 #main example
 arr = all_states_for_one_period
-print(np.array(arr).shape)
+#print(np.array(arr).shape)
 
 #print("arr", arr)
 #pcc = PCC(top_dimensional_cells = arr, periodic_dimensions=[True, False])
@@ -334,7 +338,7 @@ pcc.compute_persistence(2)
 print("betti", pcc.betti_numbers())
 #print(pcc.all_cells())
 #print(pcc.cofaces_of_persistence_pairs())
-print(pcc.persistence_intervals_in_dimension(1))
+#print(pcc.persistence_intervals_in_dimension(1))
 print(pcc.persistence_intervals_in_dimension(2))
 
 print(len(pcc.persistence(2)))
